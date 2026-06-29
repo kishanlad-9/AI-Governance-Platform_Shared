@@ -41,8 +41,6 @@ def init_db():
             problem_statement     TEXT,
             business_objective    TEXT,
             solution_approach     TEXT,
-            timeline              TEXT,
-            action_owner          TEXT,
             workflow_location     TEXT,
             decision_support      TEXT,
             business_value        TEXT,
@@ -67,6 +65,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS feasibility_assessments (
             id                       TEXT PRIMARY KEY,
             problem_id               TEXT,
+            timeline                 TEXT,
+            owner                    TEXT,
+            why_ai                   TEXT,
+            data_sensitivity         TEXT,
             assessed_at              TEXT,
             assessor_name            TEXT,
             ai_suitability_score     REAL,
@@ -85,10 +87,27 @@ def init_db():
         )
     """)
     existing2 = [r[1] for r in conn.execute("PRAGMA table_info(feasibility_assessments)").fetchall()]
-    for col, typ in [("risk_compliance_score", "REAL"), ("hard_gate_triggered", "INTEGER"),
-                      ("hard_gate_reason", "TEXT")]:
+    for col, typ in [
+
+        ("timeline", "TEXT"),
+
+        ("owner", "TEXT"),
+
+        ("why_ai", "TEXT"),
+
+        ("data_sensitivity", "TEXT"),
+
+        ("risk_compliance_score", "REAL"),
+
+        ("hard_gate_triggered", "INTEGER"),
+
+        ("hard_gate_reason", "TEXT")
+
+    ]:
         if col not in existing2:
-            conn.execute(f"ALTER TABLE feasibility_assessments ADD COLUMN {col} {typ}")
+            conn.execute(
+                f"ALTER TABLE feasibility_assessments ADD COLUMN {col} {typ}"
+            )
 
     init_m3_table(conn)
     init_committee_table(conn)
@@ -225,17 +244,64 @@ def db_save_assessment(rec: dict):
     conn = get_conn()
     conn.execute("""
         INSERT OR REPLACE INTO feasibility_assessments
-        (id, problem_id, assessed_at, assessor_name,
-         ai_suitability_score, economic_viability_score, data_readiness_score,
-         workflow_maturity_score, change_management_score, risk_compliance_score,
-         hard_gate_triggered, hard_gate_reason,
-         overall_score, verdict, ai_recommendation, responses)
+        (
+            id,
+            problem_id,
+
+            timeline,
+            owner,
+            why_ai,
+            data_sensitivity,
+
+            assessed_at,
+            assessor_name,
+
+            ai_suitability_score,
+            economic_viability_score,
+            data_readiness_score,
+            workflow_maturity_score,
+            change_management_score,
+            risk_compliance_score,
+
+            hard_gate_triggered,
+            hard_gate_reason,
+
+            overall_score,
+            verdict,
+
+            ai_recommendation,
+            responses
+        )
+
         VALUES
-        (:id, :problem_id, :assessed_at, :assessor_name,
-         :ai_suitability_score, :economic_viability_score, :data_readiness_score,
-         :workflow_maturity_score, :change_management_score, :risk_compliance_score,
-         :hard_gate_triggered, :hard_gate_reason,
-         :overall_score, :verdict, :ai_recommendation, :responses)
+        (
+            :id,
+            :problem_id,
+
+            :timeline,
+            :owner,
+            :why_ai,
+            :data_sensitivity,
+
+            :assessed_at,
+            :assessor_name,
+
+            :ai_suitability_score,
+            :economic_viability_score,
+            :data_readiness_score,
+            :workflow_maturity_score,
+            :change_management_score,
+            :risk_compliance_score,
+
+            :hard_gate_triggered,
+            :hard_gate_reason,
+
+            :overall_score,
+            :verdict,
+
+            :ai_recommendation,
+            :responses
+        )
     """, rec)
     conn.commit()
     conn.close()

@@ -6,8 +6,6 @@ REQUIRED_FIELDS = [
     ("problem_statement",  "Business problem statement"),
     ("business_objective", "Business objective"),
     ("solution_approach",  "Proposed solution approach"),
-    ("timeline",           "Timeline / deadline"),
-    ("action_owner",       "Action owner / sponsor"),
     ("workflow_location",  "Workflow / process location"),
     ("decision_support",   "Decision support required"),
     ("business_value",     "Quantified business value"),
@@ -84,8 +82,6 @@ ASSESSMENT_DIMENSIONS = [
             ("infrastructure",     "The technology infrastructure required to deploy and run this AI solution is in place"),
             ("integration_ease",   "The AI solution can be integrated into existing systems without major re-engineering"),
             ("data_governance",    "Data privacy, security, and governance requirements can be met for this use case"),
-            # NIST MAP 2.2
-            ("bias_risk",          "The training data has been evaluated for historical bias and mitigations are in place (1=no audit done/known biases, 5=formal audit completed)"),
             # NIST MEASURE 2.5
             ("explainability",     "The AI system can explain its decisions in plain language to the person affected by them (1=black box, 5=full plain-language explanations)"),
             # NIST MEASURE 2.7
@@ -97,7 +93,7 @@ ASSESSMENT_DIMENSIONS = [
         "label": "Workflow Maturity",
         "icon":  "⚙️",
         "role":  "Operations / Process Owner",
-        "color": "#8B2FC9",
+        "color": "#7B32AD",
         "desc":  "Evaluates how well-defined the process is for AI augmentation. Expanded with NIST GOVERN requirement for human-in-the-loop integration.",
         "questions": [
             ("process_defined",    "The current process/workflow is well-documented and clearly defined"),
@@ -132,8 +128,6 @@ ASSESSMENT_DIMENSIONS = [
         "color": "#1A5276",
         "desc":  "NEW dimension per NIST GOVERN + ISO 42001 Clause 6.1.3. Assesses regulatory compliance, ethical risk, audit trail feasibility, and legal liability.",
         "questions": [
-            # NIST MAP 1.1 + ISO 6.1.3
-            ("regulatory_compliance",   "The use case complies with all applicable laws and regulations (GDPR, sector-specific rules, employment law)"),
             # NIST GOVERN 6.1
             ("ethical_risk",            "The AI system does not create unacceptable ethical risks such as discrimination, manipulation, or violation of individual rights"),
             # NIST MAP 5.1
@@ -142,12 +136,6 @@ ASSESSMENT_DIMENSIONS = [
             ("legal_liability_clarity", "Legal liability for incorrect or harmful AI outputs is clearly defined and covered by existing policy or insurance"),
         ],
     },
-]
-
-# Hard gate fields — a score of 1 or 2 on these blocks Feasible verdict
-HARD_GATE_QUESTIONS = [
-    ("data_readiness",  "bias_risk",             "Unmitigated training data bias detected"),
-    ("risk_compliance", "regulatory_compliance",  "Potential regulatory non-compliance"),
 ]
 
 VERDICT_CONFIG = {
@@ -272,31 +260,43 @@ INFO_ICON_HTML = (
 )
 
 M2_OVERALL_FORMULA_HTML = INFO_ICON_HTML.format(content=(
-    "<b>Overall Score formula</b><br>"
-    "<code>overall = mean(6 dimension scores)</code><br><br>"
-    "<b>Hard gate rules</b> (applied first, override the average):<br>"
-    "• If <code>bias_risk ≤ 2.0</code> → forced <b>Not Feasible</b><br>"
-    "• If <code>regulatory_compliance ≤ 2.0</code> → forced <b>Not Feasible</b><br><br>"
-    "<b>ISO risk penalty</b>:<br>"
-    "• If ISO Risk Category = <b>High</b> → <code>overall − 0.3</code><br><br>"
-    "<b>Verdict thresholds</b> (after gates &amp; penalty):<br>"
+    "<b>Overall Governance Score</b><br>"
+    "1. Calculate the average of the six assessment dimensions.<br>"
+    "2. Apply the ISO 42001 risk adjustment (if applicable).<br>"
+    "3. Check for governance Hard Gates.<br>"
+    "4. Determine the final verdict.<br><br>"
+
+    "<b>Hard Gate Rules</b><br>"
+    "• Critical legal, regulatory, ethical or governance risks trigger a Hard Gate.<br>"
+    "• A Hard Gate overrides the numerical score.<br>"
+    "• The reason is recorded as <code>hard_gate_reason</code>.<br><br>"
+
+    "<b>ISO Risk Adjustment</b><br>"
+    "• High Risk → deduct 0.3 from the average score before assigning the verdict.<br><br>"
+
+    "<b>Verdict Thresholds</b><br>"
     "• ≥ 3.5 → ✅ Feasible<br>"
     "• 2.5–3.49 → ⚠️ Conditional<br>"
-    "• &lt; 2.5 → ❌ Not Feasible"
+    "• &lt;2.5 → ❌ Not Feasible"
 ))
 
 M3_PRIORITY_FORMULA_HTML = INFO_ICON_HTML.format(content=(
-    "<b>Priority Score formula</b><br>"
+    "<b>Governance Priority Score</b><br>"
     "<code>avg_gains = mean(4 gain scores)</code><br>"
     "<code>avg_pains = mean(4 pain scores)</code><br>"
     "<code>raw = (avg_gains × 0.6) − (avg_pains × 0.4)</code><br>"
     "<code>scaled = ((raw + 2) / 7) × 10</code><br><br>"
-    "<b>Priority bands</b>:<br>"
-    "• ≥ 7.0 → 🟢 High Priority<br>"
+
+    "<b>Evidence Rules</b><br>"
+    "• Only evidence explicitly provided is rewarded.<br>"
+    "• Unknown implementation effort increases Pain.<br>"
+    "• Unknown compliance effort increases Pain.<br>"
+    "• Unquantified business value limits Gain.<br><br>"
+
+    "<b>Priority Bands</b><br>"
+    "• ≥7.0 → 🟢 High Priority<br>"
     "• 4.0–6.9 → 🟡 Medium Priority<br>"
-    "• &lt; 4.0 → 🔴 Low Priority<br><br>"
-    "<i>Note: gains weighted 60%, pains 40% — gains count slightly more "
-    "so genuine opportunities aren't killed by ordinary friction.</i>"
+    "• &lt;4.0 → 🔴 Low Priority"
 ))
 
 M3_AVG_GAINS_FORMULA_HTML = INFO_ICON_HTML.format(content=(

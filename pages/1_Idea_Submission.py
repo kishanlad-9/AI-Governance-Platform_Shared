@@ -440,14 +440,6 @@ elif ss.idea_step == 6:
                 "Workflow Location", value=ss.idea_fields.get("workflow_location", ""))
             ss.idea_fields["decision_support"] = st.text_area(
                 "Decision Support", value=ss.idea_fields.get("decision_support", ""), height=90)
-            ss.idea_fields["timeline"] = st.text_input(
-                "Timeline", value=ss.idea_fields.get("timeline", ""))
-            ss.idea_fields["owner"] = st.text_input(
-                "Owner", value=ss.idea_fields.get("owner", ""))
-            ss.idea_fields["data_sensitivity"] = st.selectbox(
-                "Data Sensitivity", sensitivity_options,
-                index=sensitivity_options.index(ss.idea_fields.get("data_sensitivity", "Internal"))
-                if ss.idea_fields.get("data_sensitivity", "Internal") in sensitivity_options else 1)
 
         if ss.idea_documents:
             with st.expander(f"📎 {len(ss.idea_documents)} document(s) attached"):
