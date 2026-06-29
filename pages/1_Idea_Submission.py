@@ -386,35 +386,158 @@ elif ss.idea_step == 5:
         result = ss.idea_contradictions
         contradictions = result.get("contradictions", [])
 
+        # ── Field map: contradiction field label → session state key ─────────
+        FIELD_TO_KEY = {
+            "problem statement":  "problem_statement",
+            "business objective": "business_objective",
+            "business value":     "business_value",
+            "workflow location":  "workflow_location",
+            "decision support":   "decision_support",
+        }
+
         if not contradictions:
             st.success("✅ No material contradictions found between your input and uploaded documents.")
         else:
-            st.warning(f"⚠️ {len(contradictions)} potential contradiction(s) found. Review before continuing.")
+            st.warning(
+                f"⚠️ {len(contradictions)} genuine conflict(s) found where your inputs differ from "
+                f"the uploaded documents. Review each one — you can correct your entry if the "
+                f"document is the authoritative source."
+            )
+
             for i, c in enumerate(contradictions, start=1):
-                conf = c.get("confidence_pct", 0)
+                conf       = c.get("confidence_pct", 0)
                 conf_color = "#C0392B" if conf >= 80 else "#C07A10"
+                corr_key   = f"idea_correction_applied_{i}"
+                ss.setdefault(corr_key, False)
+
+                # ── Contradiction card ────────────────────────────────────────
                 st.markdown(f"""
-                <div style="background:#FFF8F0;border:1.5px solid {conf_color}55;border-radius:12px;padding:1rem 1.3rem;margin-bottom:0.7rem;">
-                  <div style="font-size:0.7rem;color:{conf_color};font-weight:700;letter-spacing:0.06em;">
-                    POTENTIAL CONTRADICTION #{i} — {conf}% CONFIDENCE
+                <div style="background:#FFF8F0;border:1.5px solid {conf_color}55;
+                            border-radius:12px;padding:1rem 1.3rem;margin-bottom:0.3rem;">
+                  <div style="font-size:0.7rem;color:{conf_color};font-weight:700;
+                              letter-spacing:0.06em;">
+                    INCONSISTENCY #{i} — {conf}% CONFIDENCE
                   </div>
-                  <div style="margin-top:8px;font-size:0.85rem;"><b>Your Input:</b><br>"{c.get('user_input','')}"</div>
-                  <div style="margin-top:8px;font-size:0.85rem;"><b>Source Document:</b> {c.get('source_file','')} — {c.get('source_location','')}</div>
-                  <div style="margin-top:4px;font-size:0.85rem;"><b>Extracted Statement:</b><br>"{c.get('extracted_statement','')}"</div>
-                  <div style="margin-top:8px;font-size:0.78rem;color:#666;font-style:italic;">{c.get('explanation','')}</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+                    <div style="background:#FFF0F0;border-radius:8px;padding:0.6rem 0.8rem;">
+                      <div style="font-size:0.68rem;color:{conf_color};font-weight:700;
+                                  text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">
+                        What you entered
+                      </div>
+                      <div style="font-size:0.83rem;color:#1a1a2e;">
+                        "{c.get('user_input','')}"
+                      </div>
+                    </div>
+                    <div style="background:#FEF9EE;border-radius:8px;padding:0.6rem 0.8rem;">
+                      <div style="font-size:0.68rem;color:{conf_color};font-weight:700;
+                                  text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">
+                        Document says — {c.get('source_file','')} ({c.get('source_location','')})
+                      </div>
+                      <div style="font-size:0.83rem;color:#1a1a2e;">
+                        "{c.get('extracted_statement','')}"
+                      </div>
+                    </div>
+                  </div>
+                  <div style="margin-top:8px;font-size:0.78rem;color:#666;font-style:italic;">
+                    {c.get('explanation','')}
+                  </div>
                 </div>""", unsafe_allow_html=True)
+
+                # ── Correction applied badge ──────────────────────────────────
+                if ss[corr_key]:
+                    st.markdown(
+                        "<div style='background:#D1F5EA;border-radius:6px;padding:4px 12px;"
+                        "font-size:0.78rem;color:#1D9E75;font-weight:700;margin-bottom:0.5rem;'>"
+                        "✅ Correction applied</div>",
+                        unsafe_allow_html=True
+                    )
+
+                # ── Correct this expander ─────────────────────────────────────
+                with st.expander(f"✏️ Correct inconsistency #{i}", expanded=False):
+                    st.caption(
+                        "Pick which field this correction applies to, enter the corrected value, "
+                        "and click Apply. The corrected value will be used when you save."
+                    )
+
+                    field_options = [
+                        "Problem Statement",
+                        "Business Objective",
+                        "Business Value",
+                        "Workflow Location",
+                        "Decision Support",
+                    ]
+
+                    # Pre-select the field closest to what the LLM flagged
+                    user_input_lower = c.get("user_input", "").lower()
+                    default_idx = 0
+                    for fi, fo in enumerate(field_options):
+                        if fo.lower() in user_input_lower or any(
+                            w in user_input_lower for w in fo.lower().split()
+                        ):
+                            default_idx = fi
+                            break
+
+                    col_field, col_val = st.columns([1, 2])
+                    with col_field:
+                        selected_field = st.selectbox(
+                            "Field to correct",
+                            field_options,
+                            index=default_idx,
+                            key=f"contra_field_sel_{i}",
+                        )
+                    with col_val:
+                        corrected_value = st.text_area(
+                            "Corrected value",
+                            value=c.get("extracted_statement", ""),
+                            height=80,
+                            key=f"contra_val_{i}",
+                            help=f"Document source: {c.get('source_file','')} — {c.get('source_location','')}",
+                        )
+
+                    reason = st.text_input(
+                        "Reason (optional)",
+                        placeholder="e.g. Document figure is from the approved business case",
+                        key=f"contra_reason_{i}",
+                    )
+
+                    if st.button(
+                        f"Apply correction to '{selected_field}'",
+                        key=f"contra_apply_{i}",
+                        type="primary",
+                    ):
+                        session_key = FIELD_TO_KEY.get(selected_field.lower())
+                        if session_key and corrected_value.strip():
+                            ss.idea_fields[session_key] = corrected_value.strip()
+                            ss[corr_key] = True
+                            # Stamp the correction onto the contradiction record so
+                            # it's saved to the DB with the corrected value
+                            c["corrected_to"] = corrected_value.strip()
+                            c["correction_field"] = selected_field
+                            c["correction_reason"] = reason.strip()
+                            st.success(
+                                f"✅ **{selected_field}** updated to the corrected value. "
+                                f"It will be used when you save in Step 6."
+                            )
+                            st.rerun()
+                        else:
+                            st.warning("Please enter a corrected value before applying.")
+
+                st.write("")  # breathing room between cards
 
         st.write("")
         col_back, col_next = st.columns([1, 1])
         with col_back:
             if st.button("← Back", width='stretch'):
                 ss.idea_contradictions = None
+                # clear any correction flags so re-running the check starts fresh
+                for k in list(ss.keys()):
+                    if k.startswith("idea_correction_applied_"):
+                        del ss[k]
                 goto(4)
         with col_next:
             label = "Continue →" if not contradictions else "Acknowledge & continue →"
             if st.button(label, type="primary", width='stretch'):
                 goto(6)
-
 # ═══════════════════════════════════════════════════════════════════════════
 # STEP 6 — Review & Save
 # ═══════════════════════════════════════════════════════════════════════════

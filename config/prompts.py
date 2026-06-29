@@ -446,15 +446,48 @@ You are given:
    source location (e.g. "[filename.pdf — Page 7]", "[filename.pptx — Slide 3]",
    "[filename.xlsx — Sheet: Revenue]").
 
-Compare the user's direct statements against the document content. Identify any
-MATERIAL contradictions — cases where a specific claim, number, scope, or fact the
-user stated conflicts with what a document says. Do NOT flag minor wording
-differences, paraphrases, or omissions; only flag actual conflicts (e.g. different
-percentages, different timelines, different scope, contradictory ownership claims).
+Your ONLY job is to find places where the documents DIRECTLY CONTRADICT the user's
+claims — meaning the document says something OPPOSITE or MATERIALLY DIFFERENT about
+the same specific fact, number, timeline, scope, or ownership claim.
 
-For each contradiction, you MUST cite the exact source location string as it appears
-in the bracketed tag (e.g. "filename.pdf, Page 7" or "filename.xlsx, Sheet: Revenue").
-Never invent a page/slide/sheet reference that wasn't given to you.
+STRICT RULES — you MUST follow all of these:
+
+1. ONLY flag a contradiction if the document says something that CONFLICTS with the
+   user. A conflict means: different number, opposite claim, incompatible timeline,
+   contradictory scope, or directly opposing ownership/responsibility statement.
+
+2. Do NOT flag something because the document provides more detail, extra context,
+   or additional evidence. More detail is NOT a contradiction.
+
+3. Do NOT flag something because the document SUPPORTS, VALIDATES, or STRENGTHENS
+   the user's claim. Supporting evidence is the opposite of a contradiction — do
+   not include it.
+
+4. Do NOT flag minor wording differences, paraphrases, or slightly different ways
+   of saying the same thing.
+
+5. Do NOT flag a document statement just because it mentions a topic the user also
+   mentioned, unless the specific fact stated is genuinely incompatible.
+
+6. If you find NO genuine contradictions, return an empty contradictions list.
+   Do NOT invent contradictions to appear thorough.
+
+7. Only include items where confidence_pct >= 70. If you are less than 70% confident
+   it is a true conflict, do not include it.
+
+8. You MUST cite the exact source location string as it appears in the bracketed tag
+   (e.g. "filename.pdf, Page 7"). Never invent a page/slide/sheet reference.
+
+EXAMPLES OF WHAT TO FLAG:
+- User says "20% cost reduction" — document says "expected savings are 5%"  ✅ flag
+- User says "go-live in Q1 2025" — document says "earliest feasible date is Q3 2025"  ✅ flag
+- User says "affects 500 users" — document says "pilot scope is 50 users"  ✅ flag
+
+EXAMPLES OF WHAT NOT TO FLAG:
+- User says "reduce processing time" — document says "reduce processing time by 40%"  ❌ do not flag (document adds detail, not conflict)
+- User says "improve customer satisfaction" — document says "CSAT scores have dropped 15%, creating urgency"  ❌ do not flag (supports the problem)
+- User says "automate claims" — document says "claims automation could save £2M annually"  ❌ do not flag (strengthens user's case)
+- User says "Q2 timeline" — document says "we recommend starting in Q2"  ❌ do not flag (agreement)
 
 You MUST respond with ONLY a valid JSON object, parseable by Python json.loads().
 No preamble, no markdown fences, no commentary.
@@ -467,7 +500,7 @@ No preamble, no markdown fences, no commentary.
       "source_location": "Page 7 / Slide 3 / Sheet: Revenue — exactly as tagged",
       "extracted_statement": "The conflicting statement found in the document.",
       "confidence_pct": 92,
-      "explanation": "One sentence on why these conflict."
+      "explanation": "One sentence explaining specifically WHY these two statements are incompatible — not just different."
     }
   ],
   "has_contradictions": false
